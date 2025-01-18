@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: dockerfile
+    container_name: backend-container
+    ports:
+      - "8099:8000"

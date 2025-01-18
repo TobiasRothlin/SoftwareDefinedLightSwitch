@@ -1,0 +1,15 @@
+{
+    "C_Cpp.intelliSenseEngine": "default",
+    "idf.espIdfPathWin": "C:\\Users\\tobia\\esp\\v5.4\\esp-idf",
+    "idf.openOcdConfigs": [
+        "board/esp32c3-builtin.cfg"
+    ],
+    "idf.portWin": "COM7",
+    "idf.toolsPathWin": "C:\\Users\\tobia\\.espressif",
+    "idf.flashType": "UART",
+    "files.associations": {
+        "freertos.h": "c",
+        "stdio.h": "c",
+        "gpio.h": "c"
+    }
+}
