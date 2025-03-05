@@ -4,7 +4,7 @@
     "idf.openOcdConfigs": [
         "board/esp32c3-builtin.cfg"
     ],
-    "idf.portWin": "COM7",
+    "idf.portWin": "COM8",
     "idf.toolsPathWin": "C:\\Users\\tobia\\.espressif",
     "idf.flashType": "UART",
     "files.associations": {

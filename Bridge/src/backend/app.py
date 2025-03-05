@@ -24,6 +24,20 @@ def create_event(input_value: ButtonPressedEventSchemaInput):
         Status="OK"
     )
 
+@app.get("/button_pressed_event")
+def get_event(id: int, PressType: str, IP: str):
+    print(f"Id: {id}, PressType: {PressType}, IP: {IP}")
+    return ButtonPressedEventSchemaOutput(
+        Id=id,
+        PressType=PressType,
+        IP=IP,
+        LEDState=[{
+            "Id": 1,
+            "Brightness": 100
+        }],
+        Status="OK"
+    )
+
 
 # Ensure the OpenAPI documentation is available
 @app.get("/openapi.json")
