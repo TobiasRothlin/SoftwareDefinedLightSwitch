@@ -10,6 +10,7 @@
     "files.associations": {
         "freertos.h": "c",
         "stdio.h": "c",
-        "gpio.h": "c"
+        "gpio.h": "c",
+        "esp_http_client.h": "c"
     }
 }

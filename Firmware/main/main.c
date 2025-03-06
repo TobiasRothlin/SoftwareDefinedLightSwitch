@@ -17,7 +17,9 @@
 
 #define WIFI_SSID "WalterRothlin_2"
 #define WIFI_PASS "waltiClaudia007"
-#define URL "http://example.com/api"
+#define URL "http://homepi.local:8099/"
+
+#define RESPONSE_BUFFER_SIZE 128
 
 #define INTERRUPT_PIN_POS_EDGE 0
 #define INTERRUPT_PIN_NEG_EDGE 1
@@ -42,11 +44,97 @@ int on_board_led_state = 0;
 
 const int board_id = 1;
 
+int led_brightness[4] = {0, 0, 0, 0};
+
 void set_led_brightness(int brightness, ledc_channel_config_t ledc_channel)
 {
+    printf("Setting brightness to %d\n", brightness);
     int duty_cyle = 8192 * brightness / 100;
     ledc_set_duty(ledc_channel.speed_mode, ledc_channel.channel, duty_cyle);
     ledc_update_duty(ledc_channel.speed_mode, ledc_channel.channel);
+}
+
+esp_err_t response_evnet_handler(esp_http_client_event_t *evt)
+{
+    static char response_buffer[RESPONSE_BUFFER_SIZE] = {0};
+    switch (evt->event_id)
+    {
+    case HTTP_EVENT_ERROR:
+        printf("HTTP_EVENT_ERROR\n");
+        break;
+    case HTTP_EVENT_ON_CONNECTED:
+        printf("HTTP_EVENT_ON_CONNECTED\n");
+        break;
+    case HTTP_EVENT_HEADER_SENT:
+        printf("HTTP_EVENT_HEADER_SENT\n");
+        break;
+    case HTTP_EVENT_ON_HEADER:
+        printf("HTTP_EVENT_ON_HEADER\n");
+        printf("%.*s", evt->data_len, (char *)evt->data);
+        break;
+    case HTTP_EVENT_ON_DATA:
+        printf("HTTP_EVENT_ON_DATA\n");
+
+        // Ensure we don't overflow the buffer
+        if (evt->data_len + strlen(response_buffer) < RESPONSE_BUFFER_SIZE)
+        {
+            strncat(response_buffer, (char *)evt->data, evt->data_len);
+        }
+        else
+        {
+            printf("Response buffer overflow\n");
+        }
+        break;
+
+    case HTTP_EVENT_ON_FINISH:
+        printf("HTTP_EVENT_ON_FINISH\n");
+
+        // Print the response buffer
+        printf("------------------\n");
+        printf("%s\n", response_buffer);
+        printf("------------------\n");
+
+        // Parse JSON data
+        cJSON *json = cJSON_Parse(response_buffer);
+        if (json == NULL)
+        {
+            printf("Failed to parse JSON\n");
+            break;
+        }
+
+        cJSON *led_state = cJSON_GetObjectItem(json, "LEDState");
+        if (led_state != NULL && cJSON_IsArray(led_state))
+        {
+            cJSON *led_state_item = cJSON_GetArrayItem(led_state, 0);
+            if (led_state_item != NULL)
+            {
+                cJSON *led_id = cJSON_GetObjectItem(led_state_item, "Id");
+                cJSON *brightness = cJSON_GetObjectItem(led_state_item, "Brightness");
+
+                if (led_id != NULL && brightness != NULL)
+                {
+                    printf("LED Id: %d\n", led_id->valueint);
+                    printf("Brightness: %d\n", brightness->valueint);
+                    led_brightness[led_id->valueint] = brightness->valueint;
+                }
+            }
+        }
+
+        cJSON_Delete(json);
+
+        // Clear the response buffer for the next request
+        memset(response_buffer, 0, RESPONSE_BUFFER_SIZE);
+        break;
+    case HTTP_EVENT_DISCONNECTED:
+        printf("HTTP_EVENT_DISCONNECTED\n");
+        break;
+    case HTTP_EVENT_REDIRECT:
+        printf("HTTP_EVENT_REDIRECT\n");
+        break;
+    default:
+        break;
+    }
+    return ESP_OK;
 }
 
 void make_rest_request(enum push_type press_type)
@@ -65,39 +153,32 @@ void make_rest_request(enum push_type press_type)
         break;
     }
 
-    char post_data[128];
-    snprintf(post_data, sizeof(post_data), "{\"Id\": %d, \"PressType\": \"%s\", \"IP\": \"8.8.8.8\"}", board_id, press_type_str);
+    // Make a get request to this URL http://homepi.local:8099/button_pressed_event?id=1&PressType=LongPress&IP=99
+    char url[100];
+    sprintf(url, "http://homepi.local:8099/button_pressed_event?id=%d&PressType=%s&IP=99", board_id, press_type_str);
+
+    char local_response_buffer[200];
 
     esp_http_client_config_t config = {
-        .url = "http://homepi.local:8099/button_pressed_event",
-        .method = HTTP_METHOD_POST};
+        .url = url,
+        .method = HTTP_METHOD_GET,
+        .timeout_ms = 10000,
+        .event_handler = response_evnet_handler,
+        .user_data = local_response_buffer,
+
+    };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
-
-    esp_http_client_set_header(client, "Content-Type", "application/json");
-    esp_http_client_set_post_field(client, post_data, strlen(post_data));
-
     esp_err_t err = esp_http_client_perform(client);
 
     if (err == ESP_OK)
     {
-        int status_code = esp_http_client_get_status_code(client);
-        int content_length = esp_http_client_get_content_length(client);
-        ESP_LOGI("HTTP", "Status = %d, content_length = %d", status_code, content_length);
-
-        // Get the response
-        char response_buffer[512];
-        int total_read_len = 0;
-        int read_len = 0;
-
-        while ((read_len = esp_http_client_read(client, response_buffer + total_read_len, sizeof(response_buffer) - total_read_len - 1)) > 0)
-        {
-            total_read_len += read_len;
-        }
-        response_buffer[total_read_len] = '\0'; // Null-terminate the response
-
-        printf("ResponseSize: %d\n", total_read_len);
-        printf("Response: %s\n", response_buffer);
+        int code = esp_http_client_get_status_code(client);
+        printf("Status Code: %d\n", code);
+    }
+    else
+    {
+        printf("Error: %s\n", esp_err_to_name(err));
     }
 
     esp_http_client_cleanup(client);
@@ -251,6 +332,9 @@ void app_main(void)
     gpio_set_level(ON_BOARD_LED, 0);
 
     printf("Connected to WiFi\n");
+
+    set_led_brightness(0, ledc_channel);
+
     while (1)
     {
         // Main loop can be used for other tasks
@@ -275,7 +359,8 @@ void app_main(void)
                 button_pressed = SHORT_PRESS;
             }
 
-            //make_rest_request(button_pressed);
+            make_rest_request(button_pressed);
+            set_led_brightness(led_brightness[0], ledc_channel);
         }
     }
 }
