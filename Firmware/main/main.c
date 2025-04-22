@@ -41,6 +41,7 @@ int neg_edge_flag = 0;
 
 int switch_led_state = 0;
 int on_board_led_state = 0;
+static int led_brightness[4] = {0, 0, 0, 0};
 
 void set_led_brightness(int brightness, ledc_channel_config_t ledc_channel)
 {
@@ -86,7 +87,7 @@ void make_rest_request(enum push_type press_type)
         .url = url,
         .method = HTTP_METHOD_GET,
         .timeout_ms = 10000,
-        .event_handler = response_evnet_handler,
+        .event_handler = response_event_handler,
         .user_data = local_response_buffer,
 
     };
@@ -138,9 +139,6 @@ void app_main(void)
 
     // Initialize WiFi
     wifi_init_sta();
-
-    // Wait until WiFi is connected
-    printf("Connecting to WiFi with SSID: %s\n", WIFI_SSID);
 
     // Configure the interrupt pin
     gpio_config_t io_conf_pos;

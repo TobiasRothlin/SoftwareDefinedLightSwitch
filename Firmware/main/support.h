@@ -9,8 +9,9 @@
 // Function to handle HTTP client events
 esp_err_t response_event_handler(esp_http_client_event_t *evt);
 
-// Event handler for system events
+// Function to handle GPIO interrupts
 void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
+
 
 // Function to initialize Wi-Fi in station mode
 void wifi_init_sta(void);

@@ -11,10 +11,10 @@
 
 #define RESPONSE_BUFFER_SIZE 128
 
-static int led_brightness[4] = {0, 0, 0, 0};
 
 
-esp_err_t response_evnet_handler(esp_http_client_event_t *evt)
+
+esp_err_t response_event_handler(esp_http_client_event_t *evt)
 {
     static char response_buffer[RESPONSE_BUFFER_SIZE] = {0};
     switch (evt->event_id)
@@ -97,7 +97,7 @@ esp_err_t response_evnet_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
